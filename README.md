@@ -48,15 +48,35 @@ cd meu_projeto_php
 
 ## ▶️ Como iniciar o projeto
 
-Abra o terminal ou prompt de comando na pasta do projeto e digite:
+### Usando comandos diretos (válido para qualquer sistema)
 
 ```bash
 docker-compose up -d
 ```
 
-Isso vai:
-- Criar os containers (ambientes isolados que rodam os sistemas)
-- Subir o PHP, o MySQL e o phpMyAdmin
+---
+
+### Usando Makefile (somente para Linux ou WSL no Windows)
+
+Se estiver usando Ubuntu ou WSL, você pode usar comandos mais curtos com `make`. Por exemplo:
+
+```bash
+make up     # Sobe o projeto
+make down   # Para e remove os containers
+make killdb # Mata todos os containers Docker em execução
+```
+
+---
+
+### Usando make.bat (para Windows sem WSL)
+
+Se estiver no Windows puro (CMD ou PowerShell), use o arquivo `make.bat`:
+
+```cmd
+make.bat up
+make.bat down
+make.bat killdb
+```
 
 ---
 
@@ -82,10 +102,16 @@ Se aparecer a frase `Ambiente PHP rodando no Docker com sucesso!`, deu tudo cert
 
 ## 🛑 Como parar tudo
 
-Se quiser desligar os serviços, digite:
+Você pode usar:
 
 ```bash
 docker-compose down
+```
+
+Ou, se estiver com Makefile:
+
+```bash
+make down
 ```
 
 ---
