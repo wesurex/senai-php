@@ -1,91 +1,100 @@
 <?php
 require_once "conexao.php";
 
-// Jogador clicou no botão JOGAR
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $jogador = trim($_POST["jogador"]);
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $nome = trim($_POST["nome_jogadora"]);
 
-    if (!empty($jogador)) {
-        // Verifica se há uma partida incompleta
-        $stmt = $conn->prepare("SELECT id FROM partida WHERE jogador = ? AND finalizada = 0 LIMIT 1");
-        $stmt->bind_param("s", $jogador);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    if (!empty($nome)) {
+        $verifica = $conn->prepare("SELECT id FROM partida WHERE jogador = ? AND finalizada = 0 LIMIT 1");
+        $verifica->bind_param("s", $nome);
+        $verifica->execute();
+        $res = $verifica->get_result();
 
-        if ($row = $result->fetch_assoc()) {
-            $partida_id = $row["id"];
+        if ($res->num_rows > 0) {
+            $id = $res->fetch_assoc()["id"];
         } else {
-            // Cria nova partida
-            $stmt = $conn->prepare("INSERT INTO partida (jogador, rodada_atual, pontuacao, finalizada) VALUES (?, 1, 0, 0)");
-            $stmt->bind_param("s", $jogador);
-            $stmt->execute();
-            $partida_id = $stmt->insert_id;
+            $nova = $conn->prepare("INSERT INTO partida (jogador, rodada_atual, pontuacao, finalizada) VALUES (?, 1, 0, 0)");
+            $nova->bind_param("s", $nome);
+            $nova->execute();
+            $id = $nova->insert_id;
         }
 
-        // Redireciona para o jogo
-        header("Location: jogo.php?partida_id=" . $partida_id);
+        header("Location: jogo.php?partida_id=" . $id);
         exit;
     }
 }
 
-// Ranking apenas de partidas finalizadas (rodada 10)
-$sql = "SELECT jogador, pontuacao FROM partida WHERE finalizada = 1 AND rodada_atual = 10 ORDER BY pontuacao DESC LIMIT 10";
-$ranking = $conn->query($sql);
+$ranking_sql = "SELECT jogador, pontuacao FROM partida WHERE finalizada = 1 AND rodada_atual = 10 ORDER BY pontuacao DESC LIMIT 10";
+$ranking_result = $conn->query($ranking_sql);
 ?>
 
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>🏠 Jogo das Cidades</title>
+    <title>🌸 Jogo das Cidades</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
+            background: #ffeef5;
+            color: #6d214f;
             text-align: center;
-            padding: 30px;
-            background: #f0f0f0;
+            padding: 40px;
         }
 
         h1 {
-            font-size: 2.2em;
+            font-size: 2.5em;
+            color: #c44569;
+            margin-bottom: 10px;
         }
 
         form {
-            margin-bottom: 30px;
+            margin-top: 30px;
         }
 
         input[type="text"] {
-            padding: 10px;
-            width: 250px;
+            padding: 12px;
             font-size: 16px;
+            width: 250px;
+            border: 2px solid #f8a5c2;
+            border-radius: 8px;
+            background-color: #fff0f6;
         }
 
         button {
-            padding: 10px 20px;
+            padding: 12px 20px;
+            margin-left: 10px;
             font-size: 16px;
-            background: #28a745;
+            background-color: #f78fb3;
             color: white;
             border: none;
+            border-radius: 8px;
             cursor: pointer;
         }
 
         button:hover {
-            background: #218838;
+            background-color: #e667a5;
+        }
+
+        h2 {
+            margin-top: 50px;
+            font-size: 1.8em;
+            color: #b33939;
         }
 
         ol {
             max-width: 400px;
-            margin: 0 auto;
+            margin: 20px auto;
             padding: 0;
             list-style-position: inside;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px #ccc;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(221, 0, 85, 0.2);
         }
 
         li {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
+            padding: 12px;
+            border-bottom: 1px solid #fce4ec;
         }
 
         li:last-child {
@@ -94,30 +103,33 @@ $ranking = $conn->query($sql);
 
         footer {
             margin-top: 60px;
-            color: #555;
+            color: #b83b5e;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
-    <h1>🏠 Jogo das Cidades</h1>
+
+    <h1>🌸 Jogo das Cidades</h1>
 
     <form method="post">
-        <label for="jogador"><strong>Digite seu nome:</strong></label><br>
-        <input type="text" name="jogador" id="jogador" required>
-        <button type="submit">🎮 JOGAR</button>
+        <label for="nome_jogadora"><strong>Informe seu nome:</strong></label><br><br>
+        <input type="text" name="nome_jogadora" id="nome_jogadora" required>
+        <button type="submit">🎮 Jogar</button>
     </form>
 
-    <h2>🏆 Ranking</h2>
+    <h2>🏆 Ranking das Cidades</h2>
     <ol>
-        <?php if ($ranking->num_rows > 0): ?>
-            <?php while ($row = $ranking->fetch_assoc()): ?>
-                <li><?= htmlspecialchars($row["jogador"]) ?> - <?= (int)$row["pontuacao"] ?> pts</li>
+        <?php if ($ranking_result->num_rows > 0): ?>
+            <?php while ($linha = $ranking_result->fetch_assoc()): ?>
+                <li><?= htmlspecialchars($linha["jogador"]) ?> - <?= (int)$linha["pontuacao"] ?> pontos</li>
             <?php endwhile; ?>
         <?php else: ?>
-            <li>Sem partidas finalizadas ainda...</li>
+            <li>Ainda não temos partidas finalizadas 🥺</li>
         <?php endif; ?>
     </ol>
 
-    <footer>© 2025 Wesley</footer>
+    <footer>© 2025 Andressa</footer>
+
 </body>
 </html>

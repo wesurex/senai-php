@@ -1,97 +1,130 @@
 <?php
 require_once("conexao.php");
 
-$partida_id = $_GET['partida_id'] ?? 0;
+$codigoPartida = $_GET['partida_id'] ?? 0;
 
-$sql_partida = "SELECT rodada_atual, pontuacao FROM partida WHERE id = $partida_id";
-$res_partida = $conn->query($sql_partida);
-$rodada_atual = 1;
-$pontuacao = 0;
+$sqlInfo = "SELECT rodada_atual, pontuacao FROM partida WHERE id = $codigoPartida";
+$resInfo = $conn->query($sqlInfo);
+$numeroRodada = 1;
+$pontuacaoTotal = 0;
 
-if ($res_partida && $res_partida->num_rows > 0) {
-    $partida = $res_partida->fetch_assoc();
-    $rodada_atual = $partida['rodada_atual'];
-    $pontuacao = $partida['pontuacao'];
+if ($resInfo && $resInfo->num_rows > 0) {
+    $dados = $resInfo->fetch_assoc();
+    $numeroRodada = $dados['rodada_atual'];
+    $pontuacaoTotal = $dados['pontuacao'];
 }
 
-$regioes = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
-$municipios = [];
+$regioesDisponiveis = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
+$listaMunicipios = [];
 
-foreach ($regioes as $regiao) {
-    $sql = "SELECT m.id, m.nome, e.nome AS Estado, e.RegiaoNome
-            FROM Municipio m
-            JOIN Estado e ON m.EstadoId = e.id
-            WHERE e.RegiaoNome = '$regiao'
-            ORDER BY RAND() LIMIT 1";
-
-    $res = $conn->query($sql);
-    if ($row = $res->fetch_assoc()) {
-        $municipios[] = $row;
+foreach ($regioesDisponiveis as $zona) {
+    $sqlZona = "SELECT m.id, m.nome, e.nome AS estado, e.RegiaoNome
+                FROM Municipio m
+                JOIN Estado e ON m.EstadoId = e.id
+                WHERE e.RegiaoNome = '$zona'
+                ORDER BY RAND() LIMIT 1";
+    $resZona = $conn->query($sqlZona);
+    if ($linha = $resZona->fetch_assoc()) {
+        $listaMunicipios[] = $linha;
     }
 }
 
-$sql_extra = "SELECT m.id, m.nome, e.nome AS Estado, e.RegiaoNome
-              FROM Municipio m
-              JOIN Estado e ON m.EstadoId = e.id
-              ORDER BY RAND() LIMIT 1";
+$sqlExtra = "SELECT m.id, m.nome, e.nome AS estado, e.RegiaoNome
+             FROM Municipio m
+             JOIN Estado e ON m.EstadoId = e.id
+             ORDER BY RAND() LIMIT 1";
 
-$res_extra = $conn->query($sql_extra);
-if ($row = $res_extra->fetch_assoc()) {
-    $municipios[] = $row;
+$resExtra = $conn->query($sqlExtra);
+if ($linha = $resExtra->fetch_assoc()) {
+    $listaMunicipios[] = $linha;
 }
 
-shuffle($municipios);
+shuffle($listaMunicipios);
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Rodada <?= $rodada_atual ?> de 10</title>
+    <title>Rodada <?= $numeroRodada ?> de 10</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Segoe UI', sans-serif;
+            background: #ffe6f0;
+            color: #333;
             text-align: center;
+            margin: 0;
+            padding: 20px;
         }
-        .grid {
+
+        .painel {
+            margin-bottom: 30px;
+        }
+
+        .painel h2 {
+            color: #c2185b;
+        }
+
+        .grade-jogo {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 150px);
-            gap: 10px;
-            width: 80%;
+            gap: 12px;
+            width: 90%;
             margin: auto;
         }
-        .regiao {
-            border: 2px dashed #ccc;
+
+        .area-regiao {
+            border: 2px dashed #f48fb1;
+            border-radius: 12px;
+            background-color: #fff0f5;
             padding: 10px;
-            background-color: #f9f9f9;
             overflow-y: auto;
         }
-        #drop-inicial {
+
+        #zona-central {
             grid-column: 2;
             grid-row: 2;
-            background-color: #eee;
+            background-color: #fce4ec;
         }
-        #municipios {
+
+        #caixa-municipios {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
             margin-top: 10px;
         }
-        .municipio {
-            background: white;
-            border: 1px solid #ccc;
-            padding: 5px;
+
+        .item-municipio {
+            border-radius: 8px;
+            padding: 6px 10px;
             cursor: grab;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to right, #ec407a, #f06292);
+            border: none;
         }
+
+        .item-municipio:nth-child(2n) {
+            background: linear-gradient(to right, #f48fb1, #f06292);
+        }
+
         button {
-            margin-top: 20px;
-            padding: 10px 20px;
+            margin-top: 25px;
+            padding: 10px 25px;
             font-size: 16px;
+            background: #c2185b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
         }
-        .header {
-            margin: 30px 0;
+
+        button:hover {
+            background: #ad1457;
         }
-        #resultadoModal {
+
+        #janelaResultado {
             display: none;
             position: fixed;
             top: 0; left: 0;
@@ -101,144 +134,149 @@ shuffle($municipios);
             align-items: center;
             z-index: 9999;
         }
-        #resultadoBox {
+
+        #caixaResultado {
             background: white;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 25px;
+            border-radius: 12px;
             text-align: center;
-            max-width: 400px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 0 15px #c2185b;
+        }
+
+        footer {
+            margin-top: 60px;
+            font-size: 0.9em;
+            color: #888;
         }
     </style>
 </head>
+
 <body>
+    <div class="painel">
+        <h2>Rodada <?= $numeroRodada ?> de 10</h2>
+        <p><strong>Pontuação:</strong> <?= $pontuacaoTotal ?> pontos</p>
+        <p>⏳ <span id="cronometro">15</span></p>
+    </div>
 
-<div class="header">
-    <h2>Rodada <?= $rodada_atual ?> de 10</h2>
-    <p><strong>Pontuação atual:</strong> <?= $pontuacao ?></p>
-    <p>⏳ <span id="timer">15</span></p>
-</div>
+    <div class="grade-jogo">
+        <div id="drop-norte" class="area-regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Norte</div>
+        <div id="drop-nordeste" class="area-regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Nordeste</div>
+        <div id="drop-centro" class="area-regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Centro-Oeste</div>
 
-<div class="grid">
-    <div id="drop-norte" class="regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Norte</div>
-    <div id="drop-nordeste" class="regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Nordeste</div>
-    <div id="drop-centro" class="regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Centro-Oeste</div>
+        <div id="zona-central" class="area-regiao" ondrop="drop(event)" ondragover="allowDrop(event)">
+            ???
+            <div id="caixa-municipios">
+                <?php foreach ($listaMunicipios as $mun): ?>
+                    <div class="item-municipio" id="m<?= $mun['id'] ?>" draggable="true" ondragstart="drag(event)" data-regiao="<?= htmlspecialchars($mun['RegiaoNome']) ?>">
+                        <?= $mun['nome'] ?> - <?= $mun['estado'] ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
 
-    <div id="drop-inicial" class="regiao" ondrop="drop(event)" ondragover="allowDrop(event)">
-        ???
-        <div id="municipios">
-            <?php foreach ($municipios as $m): ?>
-                <div class="municipio" id="m<?= $m['id'] ?>" draggable="true" ondragstart="drag(event)"
-                    data-regiao="<?= htmlspecialchars($m['RegiaoNome']) ?>">
-                    <?= $m['nome'] ?> - <?= $m['Estado'] ?>
-                </div>
-            <?php endforeach; ?>
+        <div id="drop-sudeste" class="area-regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Sudeste</div>
+        <div id="drop-sul" class="area-regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Sul</div>
+    </div>
+
+    <button onclick="enviarRodada()">💾 Salvar</button>
+
+    <div id="janelaResultado">
+        <div id="caixaResultado">
+            <h2>Resumo da Rodada</h2>
+            <p id="resumoTexto"></p>
+            <button id="botaoProxima">Próxima Rodada</button>
         </div>
     </div>
 
-    <div id="drop-sudeste" class="regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Sudeste</div>
-    <div id="drop-sul" class="regiao" ondrop="drop(event)" ondragover="allowDrop(event)">Sul</div>
-</div>
+    <footer>© 2025 Andressa</footer>
 
-<button onclick="salvar()">💾 SALVAR</button>
+    <script>
+        let tempo = 15;
+        let contagem = setInterval(() => {
+            document.getElementById("cronometro").innerText = tempo;
+            if (--tempo < 0) {
+                clearInterval(contagem);
+                enviarRodada();
+            }
+        }, 1000);
 
-<div id="resultadoModal">
-    <div id="resultadoBox">
-        <h2>Resultado da Rodada</h2>
-        <p id="resultadoTexto"></p>
-        <button id="proximaRodadaBtn">Próxima Rodada</button>
-    </div>
-</div>
-
-<p style="margin-top: 50px; color: gray;">© 2025 Wesley</p>
-
-<script>
-    let tempo = 15;
-    let timer = setInterval(() => {
-        document.getElementById("timer").innerText = tempo;
-        if (--tempo < 0) {
-            clearInterval(timer);
-            salvar();
+        function allowDrop(ev) {
+            ev.preventDefault();
         }
-    }, 1000);
 
-    function allowDrop(ev) { ev.preventDefault(); }
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
 
-    function drag(ev) {
-        ev.dataTransfer.setData("text", ev.target.id);
-    }
+        function drop(ev) {
+            ev.preventDefault();
+            const id = ev.dataTransfer.getData("text");
+            const item = document.getElementById(id);
+            ev.target.appendChild(item);
+        }
 
-    function drop(ev) {
-        ev.preventDefault();
-        const id = ev.dataTransfer.getData("text");
-        const elem = document.getElementById(id);
-        ev.target.appendChild(elem);
-    }
+        function enviarRodada() {
+            clearInterval(contagem);
 
-    function salvar() {
-        clearInterval(timer);
-        let acertos = 0;
-        const regioes = ['norte', 'nordeste', 'centro', 'sudeste', 'sul'];
-        const regiaoMap = {
-            'norte': 'Norte',
-            'nordeste': 'Nordeste',
-            'centro': 'Centro-Oeste',
-            'sudeste': 'Sudeste',
-            'sul': 'Sul'
-        };
+            const regioes = ['norte', 'nordeste', 'centro', 'sudeste', 'sul'];
+            const mapReg = {
+                'norte': 'Norte',
+                'nordeste': 'Nordeste',
+                'centro': 'Centro-Oeste',
+                'sudeste': 'Sudeste',
+                'sul': 'Sul'
+            };
 
-        const resultados = [];
+            const respostas = [];
+            let acertos = 0;
 
-        regioes.forEach(reg => {
-            const drop = document.getElementById("drop-" + reg);
-            const itens = drop.getElementsByClassName("municipio");
-            for (let i = 0; i < itens.length; i++) {
-                const cidadeId = itens[i].id.replace("m", "");
-                const regiaoCidade = itens[i].dataset.regiao;
-                const acertou = regiaoCidade.trim().toLowerCase() === regiaoMap[reg].toLowerCase();
-                resultados.push({
-                    id_cidade: cidadeId,
-                    resposta: reg,
-                    acertou: acertou ? 1 : 0
-                });
-                if (acertou) acertos++;
-            }
-        });
+            regioes.forEach(reg => {
+                const area = document.getElementById("drop-" + reg);
+                const municipios = area.getElementsByClassName("item-municipio");
 
-        const pontos = acertos * 10;
-
-        fetch('salvar_rodada.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                partida_id: <?= $partida_id ?>,
-                rodada: <?= $rodada_atual ?>,
-                respostas: resultados
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                const modal = document.getElementById("resultadoModal");
-                const texto = document.getElementById("resultadoTexto");
-                const botao = document.getElementById("proximaRodadaBtn");
-
-                if (data.rodada_atual >= 10) {
-                    texto.innerText = `✅ Você acertou ${acertos} cidade(s)!\n🎯 Pontuação final: ${data.pontuacao} pontos`;
-                    botao.innerText = "Ver Ranking";
-                    botao.onclick = () => window.location.href = "ranking.php";
-                } else {
-                    texto.innerText = `✅ Você acertou ${acertos} cidade(s)!\n+${pontos} pontos`;
-                    botao.innerText = "Próxima Rodada";
-                    botao.onclick = () => window.location.href = "jogo.php?partida_id=<?= $partida_id ?>";
+                for (let i = 0; i < municipios.length; i++) {
+                    const id = municipios[i].id.replace("m", "");
+                    const regiaoCorreta = municipios[i].dataset.regiao;
+                    const acertou = regiaoCorreta.trim().toLowerCase() === mapReg[reg].toLowerCase();
+                    respostas.push({ id_cidade: id, resposta: reg, acertou: acertou ? 1 : 0 });
+                    if (acertou) acertos++;
                 }
+            });
 
-                modal.style.display = "flex";
-            } else {
-                alert("Erro ao salvar rodada!");
-            }
-        });
-    }
-</script>
+            fetch('salvar_rodada.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    partida_id: <?= $codigoPartida ?>,
+                    rodada: <?= $numeroRodada ?>,
+                    respostas: respostas
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const modal = document.getElementById("janelaResultado");
+                    const texto = document.getElementById("resumoTexto");
+                    const botao = document.getElementById("botaoProxima");
 
+                    if (data.rodada_atual >= 10) {
+                        texto.innerText = `🎉 Acertos: ${acertos}\nPontuação final: ${data.pontuacao}`;
+                        botao.innerText = "Ver Ranking";
+                        botao.onclick = () => window.location.href = "index.php";
+                    } else {
+                        texto.innerText = `✅ Acertos: ${acertos}\n+${acertos * 10} pontos`;
+                        botao.innerText = "Próxima Rodada";
+                        botao.onclick = () => window.location.href = "jogo.php?partida_id=<?= $codigoPartida ?>";
+                    }
+
+                    modal.style.display = "flex";
+                } else {
+                    alert("Erro ao salvar!");
+                }
+            });
+        }
+    </script>
 </body>
 </html>
