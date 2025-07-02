@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   php:
+    build: ./src
     image: php:8.2-apache
     container_name: php
     volumes:
@@ -26,7 +27,7 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
+    container_name: phpmyadmin-senai
     environment:
       PMA_HOST: db
       MYSQL_ROOT_PASSWORD: root
